@@ -1,0 +1,112 @@
+---
+title: "589 project preprocessing"
+author: "Ko-Hsin Chen"
+date: "2024-04-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(spatstat)
+library(sf)
+library(sp)
+```
+
+
+```{r}
+data <- read.csv("wolf_BC.csv")
+
+data_sf <- st_as_sf(data, coords = c("decimalLongitude", "decimalLatitude"), crs = 4326)
+
+# define BC Albers projection
+crs_bc_albers <- "+proj=aea +lat_0=45 +lon_0=-126 +lat_1=50 +lat_2=58.5 +x_0=1000000 +y_0=0 +datum=NAD83 +units=m +no_defs"
+
+# Coordinate transform
+data_transformed <- st_transform(data_sf, crs_bc_albers)
+
+data$x <- st_coordinates(data_transformed)[, 1]
+data$y <- st_coordinates(data_transformed)[, 2]
+
+print(head(data))
+```
+```{r}
+DATA$x <-data$x
+DATA$y <-data$y 
+```
+
+
+```{r}
+xy_data_frame <- data.frame(X =data$x, Y = data$y)
+
+
+BC_wolf <- list(
+  Wolf = xy_data_frame, 
+  Window = DATA$Window,  
+  Elevation = DATA$Elevation,
+  Forest = DATA$Forest,
+  HFI = DATA$HFI,
+  Dist_Water = DATA$Dist_Water
+)
+
+save(BC_wolf, file = "BC_wolf.Rda")  
+```
+
+```{r}
+library(spatstat)
+library(sf)
+library(sp)
+load("BC_wolf.Rda")
+
+BC_wolf<-DATA
+sf_window <- st_as_sf(BC_wolf$Window)
+window_owin <- as.owin(sf_window)
+```
+
+```{r}
+wolf_ppp <- ppp(x = BC_wolf$Wolf$X,
+                y = BC_wolf$Wolf$Y,
+                window = window_owin)
+print(wolf_ppp)
+plot(wolf_ppp)
+```
+
+```{r}
+plot(window_owin, main="Observation Window")
+points(BC_wolf$Wolf$X, BC_wolf$Wolf$Y, col="red", pch=16)
+```
+
+### check why all data seems inside when there are 17 illegal data
+
+```{r}
+plot(window_owin, main="Observation Window")
+points(BC_wolf$Wolf$X, BC_wolf$Wolf$Y, col="red", pch=16)
+
+```
+
+```{r}
+if (!is.null(attr(wolf_ppp, "rejects"))) {
+    rejects = attr(wolf_ppp, "rejects")
+    print(rejects)
+} else {
+    print("No points were rejected.")
+}
+```
+```{r}
+inside_indices <- inside.owin(x=BC_wolf$Wolf$X, y=BC_wolf$Wolf$Y, w=window_owin)
+```
+
+```{r}
+wolf_clean <- wolf_points[inside_indices, ]
+```
+
+```{r}
+duplicates <- duplicated(wolf_clean)
+```
+
+```{r}
+wolf_clean_unique <- wolf_clean[!duplicates, ]
+```
+

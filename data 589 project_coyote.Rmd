@@ -1,21 +1,35 @@
 ---
-title: "DATA589 Project"
-output:
-  html_document: default
-  pdf_document: default
-date: "2024-04-26"
+title: "data589project_coyote_group8"
+author: "Yipeng Kuo/ Kohsin Chen/ Lu Kang/Yahan Cong"
+date: "2024-04-27"
+output: html_document
 ---
-```{r}
-library(sp) 
-library(spatstat)  # This package includes the ppp function
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# DATA import
+```{r data import}
+library(spatstat)
+library(sp)
+library(sf)
+library(splines)
 load("wolf_clean_nondup.RData")
-wolf_ppp <- ppp(x = BC_wolf$Wolf$X,
-                y = BC_wolf$Wolf$Y,
-                window = window_owin)
+load("BC_Covariates.Rda")
+```
+
+# First moment descriptive statistics
+
+## General distribution
+
+```{r}
 plot(wolf_ppp, main='Coyotes')
 ```
-```{r}
+## Quadracount 
 
+```{r}
 Q <- quadratcount(wolf_ppp, nx = 5, ny = 5)
 
 plot(wolf_ppp,
@@ -24,13 +38,16 @@ plot(wolf_ppp,
      main = "Quadrats Visualization")
 
 plot(Q, add = TRUE, col = "red")
-
 ```
 
+## Quadratest
+```{r}
+quadrat.test(Q)
+```
+
+## Intensity
 
 ```{r}
-library(spatstat)
-
 Q <- quadratcount(wolf_ppp, nx = 5, ny = 5)
 
 plot(intensity(Q, image = TRUE), main = "Intensity", col = terrain.colors(256))
@@ -41,12 +58,10 @@ plot(wolf_ppp,
      cex = 0.6,       # Point size.
      col = "blue",    # A single color for all points, you can choose your preferred color.
      add = TRUE)      # Indicates that points should be added to the existing plot.
-
 ```
+## Heatmap
 
 ```{r}
-library(spatstat)
-
 wolf_density <- density(wolf_ppp)
 
 # Plot the density estimate
@@ -57,11 +72,13 @@ plot(wolf_ppp,
      cex = 0.5,       # Point size.
      col = "green",    # Color of points, choose your preferred color.
      add = TRUE)      # Indicates that points should be added to the existing plot.
+```
 
-```
-```{r}
-plot(wolf_ppp)
-```
+From above preliminary analysis, we find the distribution is inhomogeneous.
+
+
+# Covariates Analysis
+
 ```{r}
 Elevation <- BC_wolf$Elevation
 Forest<-BC_wolf$Forest
@@ -69,6 +86,9 @@ HFI <- BC_wolf$HFI
 Dist_Water <-BC_wolf$Dist_Water
 ```
 
+We cut the 4 covariates into 5 classes and explore their relationship with coyote distribution.
+
+### Elevation
 ```{r}
 elev_cut <- cut(Elevation,
                 5,
@@ -88,12 +108,13 @@ plot(wolf_ppp,
      cex = 0.5,
      add = TRUE)
 ```
-
 ```{r}
 wolf_elev_class <- elev_cut[wolf_ppp]
 # Create a table of counts within each class
 table(wolf_elev_class)
 ```
+
+#### Forest Cover
 
 ```{r}
 forest_cut <- cut(Forest,
@@ -120,6 +141,8 @@ wolf_forest_class <- forest_cut[wolf_ppp]
 table(wolf_forest_class)
 ```
 
+### HFI
+
 ```{r}
 HFI_cut <- cut(HFI,
                 5,
@@ -139,11 +162,15 @@ plot(wolf_ppp,
      cex = 0.5,
      add = TRUE)
 ```
+
 ```{r}
 wolf_HFI_class <- HFI_cut[wolf_ppp]
 # Create a table of counts within each class
 table(wolf_HFI_class)
 ```
+
+
+### Distance to water
 
 ```{r}
 Dist_Water_cut <- cut(Dist_Water,
@@ -171,6 +198,8 @@ Dist_Water_class <- Dist_Water_cut[wolf_ppp]
 table(Dist_Water_class)
 ```
 
+## Rhohat estimate
+
 ```{r}
 rho_elev <- rhohat(wolf_ppp, Elevation)
 rho_forest <- rhohat(wolf_ppp, Forest)
@@ -178,96 +207,38 @@ rho_hfi <- rhohat(wolf_ppp, HFI)
 rho_water <- rhohat(wolf_ppp, Dist_Water)
 ```
 
+
 ```{r}
 plot(rho_elev, xlim=c(0, max(Elevation)), main="ρ vs Elevation")
 ```
 
+Lower elevations have a higher than average density of coyote occurrences.
+
 ```{r}
 plot(rho_forest, xlim=c(0, max(Forest)), main="ρ vs Forest")
 ```
+
+When forest cover is <50%, the density seems higher.
+
 ```{r}
 plot(rho_hfi, xlim=c(0, max(HFI)), main="ρ vs HFI")
 ```
+
+The intensity of sightings is initially low and increases sharply as the HFI approaches 1. 
 
 ```{r}
 plot(rho_water, xlim=c(0, max(Dist_Water)), main="ρ vs Dist_Water")
 ```
 
+The relationship does not seem to be linear or simply exponential. The significant width of the confidence interval in the latter part of the plot for the distance from water indicates there is considerable uncertainty in the intensity estimates at greater distances.
+
+From above, it seems all covariates have different relationship with coyote distribution.
+
+
+# Second moment descriptive statistics
+
+## Morisita’s index
 ```{r}
-cor.im(Elevation,Forest, HFI, Dist_Water,use ="complete.obs")
-```
-```{r}
-library(splines)
-model_9 <- ppm(wolf_ppp ~ bs(HFI, degree = 4, df = 4) + I(HFI > 0.8) + bs(Elevation, knots = c(300,1400),degree = 4, df = 3) , data = BC_wolf, use.gam = TRUE)
-```
-
-
-
-
-
-```{r}
-library(spatstat.geom)
-#library(maptools)  # For converting spatial polygons to owin
-library(sf)
-```
-```{r}
-sf_window <- st_as_sf(BC_wolf$Window)
-```
-
-```{r}
-library(spatstat.geom)
-window_owin <- as.owin(sf_window)
-```
-
-```{r}
-wolf_ppp <- ppp(x = BC_wolf$Wolf$X,
-                y = BC_wolf$Wolf$Y,
-                window = window_owin)
-print(wolf_ppp)
-plot(wolf_ppp)
-```
-
-### check why all data seems inside when there are 17 illegal data
-
-```{r}
-plot(window_owin, main="Observation Window")
-points(BC_wolf$Wolf$X, BC_wolf$Wolf$Y, col="red", pch=16)
-
-```
-
-```{r}
-if (!is.null(attr(wolf_ppp, "rejects"))) {
-    rejects = attr(wolf_ppp, "rejects")
-    print(rejects)
-} else {
-    print("No points were rejected.")
-}
-```
-```{r}
-inside_indices <- inside.owin(x=BC_wolf$Wolf$X, y=BC_wolf$Wolf$Y, w=window_owin)
-```
-
-
-
-```{r}
-duplicates <- duplicated(wolf_clean)
-```
-
-```{r}
-wolf_clean_unique <- wolf_clean[!duplicates, ]
-```
-
-```{r}
-wolf_ppp <- ppp(x = BC_wolf$Wolf$X,
-                y = BC_wolf$Wolf$Y,
-                window = window_owin)
-```
-
-
-```{r}
-library(spatstat)
-
-
 W <- owin(xrange = c(min(wolf_clean_unique$X), max(wolf_clean_unique$X)), yrange = c(min(wolf_clean_unique$Y), max(wolf_clean_unique$Y)))
 
 wolf_ppp_2 <- ppp(x = wolf_clean_unique$X , y = wolf_clean_unique$Y, window = W)
@@ -276,15 +247,15 @@ miplot(wolf_ppp_2, main = "", pch = 16, col = "#046C9A")
 
 ```
 
-### zoom in the beginning area
+Zoom in 
 ```{r}
 miplot(wolf_ppp_2, main = "", xlim = c(0, 60000), pch = 16, col = "#046C9A")
 ```
 
-### Ripley’s K-function
+Under the assumption of homogeneity, we can observe clear clustering phenomena. However, this should be biased because inhomogeneity make more sense.
 
-#### homo
-
+## Ripley’s K-function
+#### homogeneous
 ```{r}
 #Estimate the empirical k-function
 k_wolf <- Kest(wolf_ppp,correction=c("isotropic"))
@@ -297,7 +268,7 @@ plot(k_wolf,
      main = "",
      lwd = 2)
 ```
-
+Bootstrapping with 95% CI
 ```{r}
 E_wolf <- envelope(wolf_ppp,
                   Kest,
@@ -312,7 +283,9 @@ plot(E_wolf,
      lwd = 2)
 ```
 
-#### inhomo
+For homogeneous proecess, it looks there is clustering.  
+
+#### inhomogeneous
 ```{r}
 lambda_wolf <- density(wolf_ppp, bw.ppl)
 Kinhom_wolf <- Kinhom(wolf_ppp, lambda_wolf,correction="isotropic")
@@ -333,8 +306,8 @@ plot(Kinhom_wolf,
      lwd = 2,
      add = T)
 ```
-Here again add an confidence interval
 
+Bootstrapping with 95% CI
 ```{r}
 lambda_wolf_pos <- density(wolf_ppp,
                           sigma=bw.ppl,
@@ -362,11 +335,11 @@ plot(E_wolf_inhom,
      lwd = 2)
 ```
 
+After incorporating the assumption of inhomogeneity, significant clustering only appears to exist within around 30000 meters.
 
-Pair Correlation Function
+## Pair Correlation Function
 
-homo
-
+#### homogeneous
 ```{r}
 pcf_wolf <- pcf(wolf_ppp)
 
@@ -393,7 +366,7 @@ plot(pcf_wolf,
      add = T)
 ```
 
-inhomo
+#### inhomogeneous
 
 ```{r}
 # Estimate g corrected for inhomogeneity
@@ -415,8 +388,6 @@ plot(g_inhom,
      add = T)
 ```
 
-
-
 ```{r}
 #Simulation envelope (with points drawn from the estimated intensity)
 pcf_wolf_inhom <- envelope(wolf_ppp,
@@ -425,7 +396,6 @@ pcf_wolf_inhom <- envelope(wolf_ppp,
                           rank = 1,
                           nsim = 19)
 ```
-
 ```{r}
 # visualise the results
 par(mfrow = c(1,2))
@@ -438,15 +408,10 @@ plot(pcf_wolf_inhom,
      lwd = 2)
 ```
 
-# DATA import
-```{r data import}
-library(spatstat)
-library(maptools)
-library(splines)
+From the pair correlation function, it is evident that clustering is more significant within 10,000 meters. Between 10,000 and 60,000 meters, however, there is an indication of avoidance.
 
-```
+
 # Fit model to predict the spatial distribution of coyotes
-
 ## Collinearity check
 
 We check the collinearity of variables at first.
@@ -607,13 +572,6 @@ There is less lucking variable effect in our model. So it means our variable sel
 diagnose.ppm(model_7)
 ```
 We have found an interesting issue that our residuals increase on the southwest coast, where we also have a higher record of coyote observations. Diagnostically, we can see that the peaks of the errors almost all occur in the urban areas of British Columbia: Vancouver, Kelowna, etc. We believe that these prediction errors stem from data sampling. Most of the coyote data relies on human sighting reports, which causes areas with high Human Footprint Index (HFI) to have more coyote records, while areas with less human activity have fewer records, hence our data exhibits sampling bias. Additionally, due to factors like urban environments and mountains, the distribution of coyotes is not homogeneous. This means that our four variables: forest, distance to water, elevation, and HFI, cannot fully encapsulate the factors influencing coyote distribution. To accurately predict coyote appearances, we need more data.
-
-
-
-
-```{r}
-plot(BC_wolf$HFI)
-```
 
 
 
