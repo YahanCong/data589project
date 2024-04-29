@@ -1,0 +1,620 @@
+---
+title: "DATA589 Project"
+output:
+  html_document: default
+  pdf_document: default
+date: "2024-04-26"
+---
+```{r}
+library(sp) 
+library(spatstat)  # This package includes the ppp function
+load("wolf_clean_nondup.RData")
+wolf_ppp <- ppp(x = BC_wolf$Wolf$X,
+                y = BC_wolf$Wolf$Y,
+                window = window_owin)
+plot(wolf_ppp, main='Coyotes')
+```
+```{r}
+
+Q <- quadratcount(wolf_ppp, nx = 5, ny = 5)
+
+plot(wolf_ppp,
+     pch = 20,      
+     cex = 0.5,    
+     main = "Quadrats Visualization")
+
+plot(Q, add = TRUE, col = "red")
+
+```
+
+
+```{r}
+library(spatstat)
+
+Q <- quadratcount(wolf_ppp, nx = 5, ny = 5)
+
+plot(intensity(Q, image = TRUE), main = "Intensity", col = terrain.colors(256))
+
+# Overlay the 'wolf_ppp' point pattern on the density plot
+plot(wolf_ppp,
+     pch = 20,        # Type of point, here '20' represents a filled circle.
+     cex = 0.6,       # Point size.
+     col = "blue",    # A single color for all points, you can choose your preferred color.
+     add = TRUE)      # Indicates that points should be added to the existing plot.
+
+```
+
+```{r}
+library(spatstat)
+
+wolf_density <- density(wolf_ppp)
+
+# Plot the density estimate
+plot(wolf_density, main = "Heat map")
+
+plot(wolf_ppp,
+     pch = 20,        # Type of point, here '20' represents a filled circle.
+     cex = 0.5,       # Point size.
+     col = "green",    # Color of points, choose your preferred color.
+     add = TRUE)      # Indicates that points should be added to the existing plot.
+
+```
+```{r}
+plot(wolf_ppp)
+```
+```{r}
+Elevation <- BC_wolf$Elevation
+Forest<-BC_wolf$Forest
+HFI <- BC_wolf$HFI
+Dist_Water <-BC_wolf$Dist_Water
+```
+
+```{r}
+elev_cut <- cut(Elevation,
+                5,
+                labels = c("very low", "low","medium","high","very high"))
+# plot the elevation class image
+plot(elev_cut,
+     main = "Elevation classes")
+# overlay the park locations
+plot(wolf_ppp,
+     cols = "black",
+     pch = 16,
+     cex = 0.6,
+     add = TRUE)
+plot(wolf_ppp,
+     cols = "white",
+     pch = 16,
+     cex = 0.5,
+     add = TRUE)
+```
+
+```{r}
+wolf_elev_class <- elev_cut[wolf_ppp]
+# Create a table of counts within each class
+table(wolf_elev_class)
+```
+
+```{r}
+forest_cut <- cut(Forest,
+                5,
+                labels = c("very low", "low","medium","high","very high"))
+# plot the elevation class image
+plot(elev_cut,
+     main = "Forest classes")
+# overlay 
+plot(wolf_ppp,
+     cols = "black",
+     pch = 16,
+     cex = 0.6,
+     add = TRUE)
+plot(wolf_ppp,
+     cols = "white",
+     pch = 16,
+     cex = 0.5,
+     add = TRUE)
+```
+```{r}
+wolf_forest_class <- forest_cut[wolf_ppp]
+# Create a table of counts within each class
+table(wolf_forest_class)
+```
+
+```{r}
+HFI_cut <- cut(HFI,
+                5,
+                labels = c("very low", "low","medium","high","very high"))
+# plot the elevation class image
+plot(HFI_cut,
+     main = "HFI classes")
+# overlay
+plot(wolf_ppp,
+     cols = "black",
+     pch = 16,
+     cex = 0.6,
+     add = TRUE)
+plot(wolf_ppp,
+     cols = "white",
+     pch = 16,
+     cex = 0.5,
+     add = TRUE)
+```
+```{r}
+wolf_HFI_class <- HFI_cut[wolf_ppp]
+# Create a table of counts within each class
+table(wolf_HFI_class)
+```
+
+```{r}
+Dist_Water_cut <- cut(Dist_Water,
+                5,
+                labels = c("very close", "close","average","far","very far"))
+# plot the elevation class image
+plot(Dist_Water_cut,
+     main = "Dist_Water classes")
+# overlay
+plot(wolf_ppp,
+     cols = "black",
+     pch = 16,
+     cex = 0.6,
+     add = TRUE)
+plot(wolf_ppp,
+     cols = "white",
+     pch = 16,
+     cex = 0.5,
+     add = TRUE)
+```
+
+```{r}
+Dist_Water_class <- Dist_Water_cut[wolf_ppp]
+# Create a table of counts within each class
+table(Dist_Water_class)
+```
+
+```{r}
+rho_elev <- rhohat(wolf_ppp, Elevation)
+rho_forest <- rhohat(wolf_ppp, Forest)
+rho_hfi <- rhohat(wolf_ppp, HFI)
+rho_water <- rhohat(wolf_ppp, Dist_Water)
+```
+
+```{r}
+plot(rho_elev, xlim=c(0, max(Elevation)), main="ρ vs Elevation")
+```
+
+```{r}
+plot(rho_forest, xlim=c(0, max(Forest)), main="ρ vs Forest")
+```
+```{r}
+plot(rho_hfi, xlim=c(0, max(HFI)), main="ρ vs HFI")
+```
+
+```{r}
+plot(rho_water, xlim=c(0, max(Dist_Water)), main="ρ vs Dist_Water")
+```
+
+```{r}
+cor.im(Elevation,Forest, HFI, Dist_Water,use ="complete.obs")
+```
+```{r}
+library(splines)
+model_9 <- ppm(wolf_ppp ~ bs(HFI, degree = 4, df = 4) + I(HFI > 0.8) + bs(Elevation, knots = c(300,1400),degree = 4, df = 3) , data = BC_wolf, use.gam = TRUE)
+```
+
+
+
+
+
+```{r}
+library(spatstat.geom)
+#library(maptools)  # For converting spatial polygons to owin
+library(sf)
+```
+```{r}
+sf_window <- st_as_sf(BC_wolf$Window)
+```
+
+```{r}
+library(spatstat.geom)
+window_owin <- as.owin(sf_window)
+```
+
+```{r}
+wolf_ppp <- ppp(x = BC_wolf$Wolf$X,
+                y = BC_wolf$Wolf$Y,
+                window = window_owin)
+print(wolf_ppp)
+plot(wolf_ppp)
+```
+
+### check why all data seems inside when there are 17 illegal data
+
+```{r}
+plot(window_owin, main="Observation Window")
+points(BC_wolf$Wolf$X, BC_wolf$Wolf$Y, col="red", pch=16)
+
+```
+
+```{r}
+if (!is.null(attr(wolf_ppp, "rejects"))) {
+    rejects = attr(wolf_ppp, "rejects")
+    print(rejects)
+} else {
+    print("No points were rejected.")
+}
+```
+```{r}
+inside_indices <- inside.owin(x=BC_wolf$Wolf$X, y=BC_wolf$Wolf$Y, w=window_owin)
+```
+
+
+
+```{r}
+duplicates <- duplicated(wolf_clean)
+```
+
+```{r}
+wolf_clean_unique <- wolf_clean[!duplicates, ]
+```
+
+```{r}
+wolf_ppp <- ppp(x = BC_wolf$Wolf$X,
+                y = BC_wolf$Wolf$Y,
+                window = window_owin)
+```
+
+
+```{r}
+library(spatstat)
+
+
+W <- owin(xrange = c(min(wolf_clean_unique$X), max(wolf_clean_unique$X)), yrange = c(min(wolf_clean_unique$Y), max(wolf_clean_unique$Y)))
+
+wolf_ppp_2 <- ppp(x = wolf_clean_unique$X , y = wolf_clean_unique$Y, window = W)
+
+miplot(wolf_ppp_2, main = "", pch = 16, col = "#046C9A")
+
+```
+
+### zoom in the beginning area
+```{r}
+miplot(wolf_ppp_2, main = "", xlim = c(0, 60000), pch = 16, col = "#046C9A")
+```
+
+### Ripley’s K-function
+
+#### homo
+
+```{r}
+#Estimate the empirical k-function
+k_wolf <- Kest(wolf_ppp,correction=c("isotropic"))
+
+k_wolf
+```
+
+```{r}
+plot(k_wolf,
+     main = "",
+     lwd = 2)
+```
+
+```{r}
+E_wolf <- envelope(wolf_ppp,
+                  Kest,
+                  correction="isotropic",
+                  rank = 1,
+                  nsim = 19,
+                  fix.n = T)
+```
+```{r}
+plot(E_wolf,
+     main = "",
+     lwd = 2)
+```
+
+#### inhomo
+```{r}
+lambda_wolf <- density(wolf_ppp, bw.ppl)
+Kinhom_wolf <- Kinhom(wolf_ppp, lambda_wolf,correction="isotropic")
+Kinhom_wolf
+```
+```{r}
+# visualise the results
+plot(Kinhom_wolf,
+     theo ~ r,
+     main = "",
+     col = "grey70",
+     lty = "dashed",
+     lwd = 2)
+
+plot(Kinhom_wolf,
+     iso ~ r,
+     col = c("#046C9A"),
+     lwd = 2,
+     add = T)
+```
+Here again add an confidence interval
+
+```{r}
+lambda_wolf_pos <- density(wolf_ppp,
+                          sigma=bw.ppl,
+                          positive=TRUE)
+
+#Simulation envelope (with points drawn from the estimated intensity)
+E_wolf_inhom <- envelope(wolf_ppp,
+                        Kinhom,
+                        simulate = expression(rpoispp(lambda_wolf_pos)),
+                        correction="border",
+                        rank = 1,
+                        nsim = 19)
+```
+```{r}
+# visualise the results
+par(mfrow = c(1,2))
+plot(E_wolf_inhom,
+     main = "",
+     lwd = 2)
+
+# Zoom in on range where significant deviations appear
+plot(E_wolf_inhom,
+     xlim = c(0,50000),
+     main = "",
+     lwd = 2)
+```
+
+
+Pair Correlation Function
+
+homo
+
+```{r}
+pcf_wolf <- pcf(wolf_ppp)
+
+pcf_wolf
+```
+
+```{r}
+plot(pcf_wolf)
+```
+```{r}
+# visualise the results
+plot(pcf_wolf,
+     theo ~ r,
+     ylim = c(0,20),
+     main = "",
+     col = "grey70",
+     lwd = 2,
+     lty = "dashed")
+
+plot(pcf_wolf,
+     iso ~ r,
+     col = c("#046C9A"),
+     lwd = 2,
+     add = T)
+```
+
+inhomo
+
+```{r}
+# Estimate g corrected for inhomogeneity
+g_inhom <- pcfinhom(wolf_ppp)
+
+# visualise the results
+plot(g_inhom,
+     theo ~ r,
+     ylim = c(0,9),
+     main = "",
+     col = "grey70",
+     lwd = 2,
+     lty = "dashed")
+
+plot(g_inhom,
+     iso ~ r,
+     col = c("#046C9A"),
+     lwd = 2,
+     add = T)
+```
+
+
+
+```{r}
+#Simulation envelope (with points drawn from the estimated intensity)
+pcf_wolf_inhom <- envelope(wolf_ppp,
+                          pcfinhom,
+                          simulate = expression(rpoispp(lambda_wolf_pos)),
+                          rank = 1,
+                          nsim = 19)
+```
+
+```{r}
+# visualise the results
+par(mfrow = c(1,2))
+plot(pcf_wolf_inhom)
+
+# Zoom in on range where significant deviations appear
+plot(pcf_wolf_inhom,
+     xlim = c(0,60000),
+     main = "",
+     lwd = 2)
+```
+
+# DATA import
+```{r data import}
+library(spatstat)
+library(maptools)
+library(splines)
+
+```
+# Fit model to predict the spatial distribution of coyotes
+
+## Collinearity check
+
+We check the collinearity of variables at first.
+```{r}
+cor.im(BC_wolf$Elevation,BC_wolf$Forest,BC_wolf$HFI, BC_wolf$Dist_Water, use = "pairwise.complete.obs")
+```
+
+From the correlation matrix above, we can see that the collinearity between Forest, HFI, Dist_Water and Elevation is very weak. All of them can be used for coyote spatial distribution modelling.
+
+## Model fitting
+
+Based on the covariates relationships (rhohat plots), we guess that there is an non-linearity relationship between Dist_Water, HFI, Forest and Elevations. The quadratic term of Dist_water and forest might influence of spatial intensity of coyote, and the intensity of coyote might have strong correlation with HFI and Elevations' higher polynomial terms. 
+
+We start at Forest, Dist_Water, and the Dist_Water and Elevation as our start point for ppm building. And utilize AIC as one of our comparsion standard
+
+```{r model1}
+model_1 <- ppm(wolf_ppp ~ HFI + Forest + Dist_Water + Elevation, data = BC_wolf)
+model_1
+AIC(model_1)
+```
+The simple model shows that Forest and Dist_Water might have weak relationship with coyote's distribution. 
+
+```{r model2}
+model_2 <- ppm(wolf_ppp ~ HFI + Forest + I(Forest^2) + I(Dist_Water) + Elevation, data = BC_wolf)
+model_2
+AIC(model_2)
+```
+
+```{r model3}
+model_3 <- ppm(wolf_ppp ~ HFI + I(Dist_Water) + I(Forest^2) + I(Forest) + Elevation, data = BC_wolf)
+model_3
+AIC(model_3)
+```
+
+```{r model4}
+model_4 <- ppm(wolf_ppp ~ HFI*I(Dist_Water) + Elevation, data = BC_wolf)
+model_4
+AIC(model_4)
+```
+From those models above, we can see that all terms contains Dist_Water and Forest (no matter what kind it is) has week effect on coyote's distribution. We remove them from our model.
+
+
+```{r model5}
+model_5 <- ppm(wolf_ppp ~ HFI + Elevation, data = BC_wolf)
+model_5
+AIC(model_5)
+```
+
+Now all terms are effective in our model. And we want to explore if their polynomial fits the model better. Since the higher-degree polynomial will easily make the model fail to converge, we use gam instead of ppm
+
+```{r model6}
+model_6 <- ppm(wolf_ppp ~ bs(HFI, knots = c(0.2,0.6), degree = 3, df = 4) + bs(Elevation, degree = 3, df = 3), data = BC_wolf, use.gam = TRUE)
+model_6
+AIC(model_6)
+```
+```{r model5 vs model6 anova}
+anova(model_5, model_6, test = "LRT")
+
+```
+
+
+```{r plot for model_6}
+par_res_elev <- parres(model_6, "Elevation")
+par_res_hfi <- parres(model_6, "HFI")
+par_res_forest <- parres(model_6, "Forest")
+par_res_water <- parres(model_6, "Dist_Water")
+
+par(mfrow = c(1,2))
+plot(par_res_elev,
+     legend = FALSE,
+     lwd = 2,
+     main = "",
+     xlab = "Elevation (m)")
+plot(par_res_hfi,
+     legend = FALSE,
+     lwd = 2,
+     main = "",
+     xlab = "HFI")
+```
+As the AIC and anova report shown, our new GAM model has a better performance now. But it also looks luck performance on the low elevation, and the HFI's confidence interval has high variance when HFI near to 0.6 or lower than 0.2. We add two knots to capture more detailed variations in coyote activity intensity with respect to elevation, and we increased the weight proportion for HFI > 0.8 because, according to rhohat, the frequency of coyote sightings only begins to rise sharply after HFI exceeds 0.8.
+
+```{r model_7}
+model_7 <- ppm(wolf_ppp ~ bs(HFI, degree = 4, df = 4) + I(HFI > 0.8) + bs(Elevation, knots = c(300,1400),degree = 4, df = 3), data = BC_wolf, use.gam = TRUE)
+model_7
+AIC(model_7)
+```
+
+```{r}
+anova(model_6, model_7, test = "LRT")
+```
+```{r plot for model_7}
+par_res_elev <- parres(model_7, "Elevation")
+par_res_hfi <- parres(model_7, "HFI")
+par_res_forest <- parres(model_7, "Forest")
+par_res_water <- parres(model_7, "Dist_Water")
+
+par(mfrow = c(1,2))
+plot(par_res_elev,
+     legend = FALSE,
+     lwd = 2,
+     main = "",
+     xlab = "Elevation (m)")
+plot(par_res_hfi,
+     legend = FALSE,
+     lwd = 2,
+     main = "",
+     xlab = "HFI")
+```
+Now We can see that the whole plot fitting has improved. 
+
+Since in the coyote intensity distribution, we can see that the coyote clustered in the HFI > 0.8. So we see the fitting in the small window.
+
+```{r }
+par(mfrow = c(1,2))
+plot(par_res_elev,
+     legend = FALSE,
+     lwd = 2,
+     main = "",
+     xlab = "Elevation (m)", ylim = c(-20,20))
+plot(par_res_hfi,
+     legend = FALSE,
+     lwd = 2,
+     main = "",
+     xlab = "HFI", xlim = c(0.8,1))
+```
+We can see that the model fitting well now. 
+
+```{r model_plot}
+plot(model_7,log=TRUE,se = FALSE,superimpose = FALSE, n= 100)
+```
+
+Here is our residual plot
+
+
+```{r residual plot}
+res <- residuals(model_7)
+
+na_indexes <- which(is.na(res$val))
+# If you need to exclude NA values explicitly
+if (length(na_indexes) > 0) {
+  res <- res[-na_indexes]
+  plot(res, cols='transparent')
+} else {
+  plot(res, cols='transparent')
+}
+```
+
+From the graph above, we can see that our model can fit the coyote distribution well. 
+# lucking variable check
+
+```{r lucking-check}
+lurking(model_7, BC_wolf$Forest)
+lurking(model_7, BC_wolf$Dist_Water)
+```
+There is less lucking variable effect in our model. So it means our variable selected is suitable.
+
+```{r}
+diagnose.ppm(model_7)
+```
+We have found an interesting issue that our residuals increase on the southwest coast, where we also have a higher record of coyote observations. Diagnostically, we can see that the peaks of the errors almost all occur in the urban areas of British Columbia: Vancouver, Kelowna, etc. We believe that these prediction errors stem from data sampling. Most of the coyote data relies on human sighting reports, which causes areas with high Human Footprint Index (HFI) to have more coyote records, while areas with less human activity have fewer records, hence our data exhibits sampling bias. Additionally, due to factors like urban environments and mountains, the distribution of coyotes is not homogeneous. This means that our four variables: forest, distance to water, elevation, and HFI, cannot fully encapsulate the factors influencing coyote distribution. To accurately predict coyote appearances, we need more data.
+
+
+
+
+```{r}
+plot(BC_wolf$HFI)
+```
+
+
+
+
